@@ -6,22 +6,18 @@ import torch.nn.functional as F
 import joblib
 from model import ANFIS  
 
-# -------------------------------
-# Load PCA transformer and trained model weights
-# -------------------------------
-# Load the PCA transformer saved as "pca_transform.pkl"
+
 pca_transform = joblib.load("pca_transform.pkl")
 
-# Create the multi-output ANFIS model.
-# Assume PCA reduction to 9 components.
+
+# Top 9 components from PCA reduction
 pca_components = 9
 model = ANFIS(input_dim=pca_components, num_mfs=2, output_dim=3)
 model.load_state_dict(torch.load("final_model_weights.pth", map_location=torch.device("cpu")))
 model.eval()
 
-# -------------------------------
-# Define the 27 Dark Triad Questions
-# -------------------------------
+
+# 27 Dark Triad Questions
 questions = {
     "M1": "It's not wise to tell your secrets.",
     "M2": "I like to use clever manipulation to get my way.",
@@ -52,9 +48,7 @@ questions = {
     "P9": "I'll say anything to get what I want."
 }
 
-# -------------------------------
 # Streamlit App Layout
-# -------------------------------
 st.title("Dark Triad Trait Predictor")
 
 st.markdown("""
@@ -73,20 +67,16 @@ with st.form(key="dark_triad_form"):
 
 if submit_button:
     responses = np.array(responses).reshape(1, -1)
-    responses_norm = (responses - 1) / 4.0  # Normalize to [0,1]
+    responses_norm = (responses - 1) / 4.0  
     
-    # Apply the PCA transformation (must be the same as during training)
     responses_reduced = pca_transform.transform(responses_norm)  # shape: (1, pca_components)
     
-    # Convert to tensor and predict using the ANFIS model.
     input_tensor = torch.tensor(responses_reduced, dtype=torch.float32)
     with torch.no_grad():
         raw_output = model(input_tensor)
-        # Apply softmax to obtain probabilities for each trait.
         probabilities = F.softmax(raw_output, dim=1).cpu().numpy()[0]
     
-    # Determine interpretation based on thresholds
-    # Here we use 50% as a threshold; adjust based on your domain knowledge.
+
     thresholds = [0.5, 0.5, 0.5]
     interpretations = []
     trait_names = ["Machiavellianism", "Narcissism", "Psychopathy"]
@@ -96,7 +86,7 @@ if submit_button:
         else:
             interpretations.append(f"Low {name}")
     
-    # Also determine the dominant trait.
+    
     dominant_trait = trait_names[np.argmax(probabilities)]
     
     st.subheader("Your Predicted Dark Triad Trait Probabilities")
